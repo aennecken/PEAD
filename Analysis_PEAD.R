@@ -1,5 +1,6 @@
 # written by Philipp Jurmeister (philipp.jurmeister@charite.de) and Anne Schoeler (anne.schoeler@charite.de)
 # July 2018
+# The idat files for an examples analysis can be found at GEO (data set GSE116699)
 
 # load required packages
 library(minfi)
@@ -27,7 +28,7 @@ if(!exists("cols")&!exists("tree"))  {
   if(nrow(targets)<3) {
     # check if Random Forest Formula and Probe Names are loaded 
     # read in raw intensity signals
-    rgSet <- read.metharray.exp(targets=targets)
+    rgSet <- read.metharray.exp(targets=targets,force=TRUE)
     
     # normalise data
     mSetSq<- preprocessSWAN(rgSet)
@@ -55,7 +56,7 @@ if(!exists("cols")&!exists("tree"))  {
     
   } else{
     # read in raw intensity signals
-    rgSet <- read.metharray.exp(targets=targets)
+    rgSet <- read.metharray.exp(targets=targets,force=TRUE)
     
     # normalise data
     mSetSq<- preprocessFunnorm(rgSet, verbose = FALSE)
