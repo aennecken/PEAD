@@ -1,0 +1,99 @@
+---
+title: "PEAD Report Results"
+date: "Report generated: `r format(Sys.time(), '%d %b %Y, %H:%M')`"
+output:
+  html_document:
+    width: 80;
+    margin-left: auto;
+    margin-right: auto;
+    fig_width: 10
+    fig_height: 5
+---
+  
+  
+Random forest classifier to differentiate pulmonary enteric adenocarcinoma (PEAD) from pulmonary metastases of colorectal adenocarcinomas (CRAD) and pulmonary metastases from upper gastrointestinal adenocarcinomas (UGAD)
+
+## Random Forest Classification
+  
+Tumor origin predicted by the machine learning algorithm. The tumor can be classified as primary pulmonary, colorectal or upper gastrointestinal adenocarcinoma. The empirical probability is defined as the proportion of decision trees voting for the predicted tumor origin. If the highest empirical probability is <50%, an alternative primary site should be excluded.
+  
+```{r,error=FALSE,message=FALSE,warning=FALSE,echo=FALSE,size="Huge"}
+library(minfi)
+library(gridExtra)
+library(randomForest)
+library(reshape)
+
+sampleID <- targets$sampleID
+
+### table
+pred.probs <- as.data.frame(cbind(Prediction.prob$CRAD,Prediction.prob$LUAD,Prediction.prob$Upper_GI))
+pred.probs$max <- apply(pred.probs, 1, max)*100
+pred.table <- as.data.frame(cbind(targets$sampleID,as.character(Prediction$predicted),round(as.numeric(as.character(pred.probs$max)),1)))
+pred.table$V2 <- as.character(pred.table$V2)
+pred.table$V2[pred.table$V2 == "CRAD"] <- "Colorectal Origin"
+pred.table$V2 <- as.character(pred.table$V2)
+pred.table$V2[pred.table$V2 == "LUAD"] <- "Pulmonary Origin"
+pred.table$V2 <- as.character(pred.table$V2)
+pred.table$V2[pred.table$V2 == "UGAD"] <- "Gastroesophageal Origin"
+colnames(pred.table) <- c("Sample ID", "Predicted Tumor Origin", "Empirical Probability [%]")
+pander::pander(pred.table,style="simple",split.table = Inf)
+```
+
+
+  
+  
+## Detailed Proportions of Votes
+  
+Detailed table and stacked bar plot, summarizing the proportions of decision trees voting for the three examined tumor origins.
+```{r,error=FALSE,message=FALSE,warning=FALSE,echo=FALSE,size="Huge"}
+
+pred.table2 <- as.data.frame(cbind(targets$sampleID,as.character(Prediction$predicted),Prediction.prob$CRAD,Prediction.prob$LUAD,Prediction.prob$Upper_GI))
+pred.table2$V2 <- c()
+pred.table2$V3 <- round(as.numeric(as.character(pred.table2$V3))*100,1)
+pred.table2$V4  <- round(as.numeric(as.character(pred.table2$V4))*100,1)
+pred.table2$V5  <- round(as.numeric(as.character(pred.table2$V5))*100,1)
+colnames(pred.table2) <- c("Sample ID", "Votes for Colorectal Origin [%]", "Votes for Pulmonary Origin [%]", "Votes for Upper Gastrointestinal Origin [%]")
+pander::pander(pred.table2,style="simple",split.table = Inf)
+
+
+### plot
+dat <- as.data.frame(cbind(targets$sampleID,Prediction.prob$CRAD,Prediction.prob$LUAD,Prediction.prob$Upper_GI))
+colnames(dat) <- c("sampleID", "CRAD", "LUAD", "UGAD")
+datplot <- melt(dat, id.var="sampleID")
+datplot$sampleID = factor(datplot$sampleID, levels = c(targets$sampleID))
+datplot$value <- as.numeric(as.character(datplot$value))
+ggplot(datplot, aes(x = sampleID, y = value, fill = variable)) + 
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values=c("#2980BA","#9ABC59","#A55EA9")) +
+  theme_minimal() +
+  labs(x = "Sample ID", y = "Proportion of Votes", fill = "Prediction") +
+  scale_color_manual(labels = c("A", "B", "C")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+  
+  
+## Sample Information
+  
+Additional information for quality control.
+  
+```{r,error=FALSE,message=FALSE,warning=FALSE,echo=FALSE,size="Huge"}
+sentrix <- targets$barcode
+chiptype <- annotation(rgSet)[1]
+predicted_sex <- getSex(mSetSq)
+sex <- predicted_sex$predictedSex
+sampleinfo <- cbind(sampleID,sentrix,chiptype,sex)
+colnames(sampleinfo)<- c("Sample ID","Sentrix ID","Array Type","Predicted Gender")
+sampleinfo <- as.data.frame(sampleinfo)
+pander::pander(sampleinfo,style="simple",split.table = Inf)
+```
+
+***
+### Reference  
+DNA methylation profiling reliably distinguishes pulmonary enteric adenocarcinoma from metastatic colorectal cancer
+
+Philipp Jurmeister, Anne Schoeler, Alexander Arnold, Frederick Klauschen, Dido Lenze, Michael Hummel, Leonille Schweizer, Hendrik Blaeker, Berit Pfitzner, Soulafa Mamlouk, Christine Sers, Carsten Denkert, Damian Stichel, David Horst, Maximilian von Laffert, David Capper
+
+### Disclaimer  
+Disclaimer: The provided algorithm was designed for use with pulmonary, colorectal and upper gastrointestinal adenocarcinomas. It has not been validated and should be used with caution. Implementation of the results in a clinical setting is in the sole responsibility of the treating physician.
